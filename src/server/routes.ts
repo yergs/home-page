@@ -16,7 +16,7 @@ import {
 } from "./http.ts";
 import { decodeLayoutJson, readLayout, writeLayout } from "./layout-store.ts";
 import { assistantPortMetaName } from "../common/assistant.ts";
-import { widgetAssetsPath, widgetPageId } from "../common/widgets.ts";
+import { widgetAssetsPath } from "../common/widgets.ts";
 import {
   BatchRequest,
   censusBatchCsv,
@@ -125,14 +125,6 @@ const route = (
         "content-type": "text/html; charset=utf-8",
         "cache-control": "no-cache",
       },
-      body: page(site.buildId, site.assistantPort),
-    });
-  }
-  if (widgetPageId(pathname) !== null && isRead) {
-    // A widget's own full page: the same app shell, which shows just that widget.
-    return Effect.succeed({
-      status: 200,
-      headers: { "content-type": "text/html; charset=utf-8", "cache-control": "no-cache" },
       body: page(site.buildId, site.assistantPort),
     });
   }

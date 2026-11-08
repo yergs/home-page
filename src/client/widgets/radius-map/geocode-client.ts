@@ -31,8 +31,12 @@ export const loadKnown = (): Known => {
   return Either.getOrElse(decoded, () => ({}));
 };
 
+/**
+ * Adds to what this browser knows. Merged with what's stored now, so lookups another
+ * tab (or another radius map) saved meanwhile aren't lost.
+ */
 export const saveKnown = (known: Known): void =>
-  localStorage.setItem(cacheKey, JSON.stringify(known));
+  localStorage.setItem(cacheKey, JSON.stringify({ ...loadKnown(), ...known }));
 
 export const forgetKnown = (): void => localStorage.removeItem(cacheKey);
 
@@ -99,15 +103,26 @@ export const batchSize = maxBatch;
 /** What the page says when the browser has no room to keep the CSV. */
 export const savedProblem = "This file is too big to keep in the browser between visits.";
 
-const stateKey = "radius-map:page-state";
+/** Where one radius map widget keeps its state, so each widget has its own. */
+const stateKey = (widgetId: string) => `radius-map:page-state:${widgetId}`;
 
-/** The CSV, column choices and teachers saved in this browser. */
-export const loadState = (): SavedState => decodeState(localStorage.getItem(stateKey));
+/** Where the state was kept when there was one map for every widget, before full-screen views. */
+const sharedStateKey = "radius-map:page-state";
+
+/**
+ * The CSV, column choices and teachers this widget saved in this browser. A widget
+ * with none yet starts from what was saved before each widget had its own.
+ */
+export const loadState = (widgetId: string): SavedState =>
+  decodeState(localStorage.getItem(stateKey(widgetId)) ?? localStorage.getItem(sharedStateKey));
 
 /** Saves them in this browser only. Fails with a message if the browser has no room (a huge CSV). */
-export const saveState = (state: SavedState): string | null => {
-  const saved = Either.try(() => localStorage.setItem(stateKey, encodeState(state)));
+export const saveState = (widgetId: string, state: SavedState): string | null => {
+  const saved = Either.try(() => localStorage.setItem(stateKey(widgetId), encodeState(state)));
   return Either.isLeft(saved) ? savedProblem : null;
 };
 
-export const forgetState = (): void => localStorage.removeItem(stateKey);
+export const forgetState = (widgetId: string): void => {
+  localStorage.removeItem(stateKey(widgetId));
+  localStorage.removeItem(sharedStateKey);
+};

@@ -245,12 +245,6 @@ const geocodeIo = (calls: Array<string>, answers: {
     geocodeNominatim: (q) => Effect.sync(() => (calls.push(`osm ${q}`), answers.nominatim ?? "[]")),
   });
 
-Deno.test("a widget's full page is served as the app shell", async () => {
-  const res = await run(request("GET", "/web/widget/radius-map"));
-  assertEquals([res.status, res.body], [200, page("abc", 9443)]);
-  assertEquals((await run(request("GET", "/web/widget/Bad_Id"))).status, 404);
-});
-
 Deno.test("/api/geocode/batch geocodes addresses, in order, nulling non-matches", async () => {
   const calls: Array<string> = [];
   const body = JSON.stringify({

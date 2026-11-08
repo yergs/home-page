@@ -1,9 +1,10 @@
 /**
- * The radius map's full page: load a CSV of names and addresses, give a start
- * address or cross streets and a number of miles, and see who is within reach.
- * The CSV is read here in the browser. It isn't sent to the server or saved.
+ * The radius map's full-screen view: load a CSV of names and addresses, give a
+ * start address or cross streets and a number of miles, and see who is within
+ * reach. The CSV is read here in the browser and kept only in this browser; its
+ * addresses (not names) are geocoded through this app's server.
  */
-import { Box, Button, chakra, Heading, HStack, IconButton, Input, Text } from "@chakra-ui/react";
+import { Box, Button, chakra, HStack, IconButton, Input, Text } from "@chakra-ui/react";
 import { useEffect, useMemo, useState } from "react";
 import { LuDownload, LuPlus, LuSearch, LuTrash2, LuUpload } from "react-icons/lu";
 import { parseCsv, toCsv } from "../../../common/csv.ts";
@@ -34,6 +35,8 @@ import {
 import { emptyState } from "./saved-state.ts";
 import { chunks, type Known, lookupsNeeded } from "./lookups.ts";
 import { type Circle, type Dot, MapView } from "./map-view.tsx";
+import type { FullScreenProps } from "../../widget-kit/views.tsx";
+import type { RadiusMapConfig } from "./config.ts";
 
 const fieldNames: Readonly<Record<Field, string>> = {
   name: "Name",
@@ -69,9 +72,9 @@ const milesValid = (s: Start): boolean => Number.isFinite(startMiles(s)) && star
 const chosen = (e: React.ChangeEvent<HTMLSelectElement>): number | null =>
   e.target.value === "" ? null : Number(e.target.value);
 
-export function RadiusMapPage() {
+export function RadiusMapPage({ widgetId }: FullScreenProps<RadiusMapConfig>) {
   // What was loaded last time, kept in this browser (see saved-state.ts).
-  const [saved] = useState(loadState);
+  const [saved] = useState(() => loadState(widgetId));
   const [csv, setCsv] = useState<Csv | null>(
     saved.csv === null ? null : { headers: saved.csv.headers, rows: saved.csv.rows },
   );
@@ -86,7 +89,7 @@ export function RadiusMapPage() {
   const [selected, setSelected] = useState<number | null>(null);
 
   useEffect(() => {
-    const problem = saveState({
+    const problem = saveState(widgetId, {
       csv: csv === null ? null : { fileName, headers: csv.headers, rows: csv.rows },
       mapping,
       starts,
@@ -94,7 +97,7 @@ export function RadiusMapPage() {
     setStatus((now) =>
       problem !== null ? { error: true, text: problem } : now?.text === savedProblem ? null : now
     );
-  }, [csv, fileName, mapping, starts]);
+  }, [widgetId, csv, fileName, mapping, starts]);
 
   const load = async (file: File) => {
     const rows = parseCsv(await file.text());
@@ -234,7 +237,7 @@ export function RadiusMapPage() {
   };
 
   return (
-    <Box display="flex" h="100vh" w="100vw" bg="bg" color="fg">
+    <Box display="flex" h="full" w="full" bg="bg" color="fg">
       <Box
         w="26rem"
         flexShrink={0}
@@ -245,7 +248,6 @@ export function RadiusMapPage() {
         gap="1rem"
         borderRightWidth="1px"
       >
-        <Heading size="lg">Radius Map</Heading>
         <Text fontSize="sm" color="fg.muted">
           Find the addresses in a spreadsheet that are within a distance of a place. Your file is
           read in this browser and isn't uploaded or saved on a server. Addresses are sent once to
@@ -460,7 +462,7 @@ export function RadiusMapPage() {
           alignSelf="flex-start"
           onClick={() => {
             forgetKnown();
-            forgetState();
+            forgetState(widgetId);
             setKnown({});
             setCsv(null);
             setFileName("");

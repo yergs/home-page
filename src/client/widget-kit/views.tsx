@@ -21,7 +21,6 @@ import {
 } from "./decode.ts";
 
 export type { Draft, EditorProps, FullScreenProps, WidgetProps } from "./decode.ts";
-export { pageViewName } from "./contract.ts";
 
 const Problem = (props: { message: string }) => (
   <Text fontSize="sm" color="fg.error">{props.message}</Text>

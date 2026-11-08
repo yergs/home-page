@@ -237,13 +237,3 @@ export const widgetBundleUrl = (registry: Registry, id: string): Either.Either<s
     ? Either.left(`There's no widget type called "${id}"`)
     : Either.right(`${widgetAssetsPath}${bundleFile(id)}?v=${encodeURIComponent(entry.version)}`);
 };
-
-/** Where the server serves a widget's own full page, which opens in a tab of its own. */
-export const widgetPagePath = (id: string): string => `/web/widget/${id}`;
-
-/** The widget type a full-page path is for, or null if it isn't one. */
-export const widgetPageId = (pathname: string): string | null => {
-  const match = /^\/web\/widget\/([^/]+)\/?$/.exec(pathname);
-  const id = match?.[1];
-  return id !== undefined && Schema.is(WidgetId)(id) ? id : null;
-};

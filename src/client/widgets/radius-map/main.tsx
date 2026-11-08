@@ -1,14 +1,12 @@
-/** The radius map widget: a button in the column, and a full page where the map is. */
+/** The radius map widget: a button in the column, and the map in its full-screen view. */
 import { Box, Input, Text } from "@chakra-ui/react";
-import { Either } from "effect";
 import { useEffect, useState } from "react";
 import { registerMfe } from "../../mfe/register-live.tsx";
 import { Label } from "../../widget-kit/form.tsx";
 import {
-  customView,
   type EditorProps,
   editorView,
-  pageViewName,
+  fullScreenView,
   widgetView,
 } from "../../widget-kit/views.tsx";
 import { RadiusMapConfig } from "./config.ts";
@@ -32,7 +30,7 @@ function RadiusMapEditor({ config, reportDraft }: EditorProps<RadiusMapConfig>) 
         }}
       />
       <Text fontSize="sm" color="fg.muted" mt="2">
-        The map opens on its own page from the button in the column.
+        The map opens over the page from the button in the column.
       </Text>
     </Box>
   );
@@ -41,5 +39,5 @@ function RadiusMapEditor({ config, reportDraft }: EditorProps<RadiusMapConfig>) 
 registerMfe("radius-map", () => ({
   widget: widgetView(RadiusMapConfig, RadiusMap),
   editor: editorView(RadiusMapConfig, RadiusMapEditor),
-  [pageViewName]: customView(() => Either.right({}), RadiusMapPage),
+  "full-screen": fullScreenView(RadiusMapConfig, RadiusMapPage),
 }));

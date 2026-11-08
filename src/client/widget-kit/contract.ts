@@ -22,8 +22,6 @@ export const editorViewName = "editor";
  * `openFullScreen`.
  */
 export const fullScreenViewName = "full-screen";
-/** A widget's own full page, if it has one: opened in a tab of its own, with no props. */
-export const pageViewName = "page";
 
 /**
  * The widget APIs a widget's views are given, by name: a client (`ApiClient`, in

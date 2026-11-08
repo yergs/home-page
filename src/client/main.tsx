@@ -4,8 +4,6 @@ import { Either } from "effect";
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import { App } from "./app.tsx";
-import { WidgetPage } from "./widget-page.tsx";
-import { widgetPageId } from "../common/widgets.ts";
 import { loadWidgetRegistry } from "./api.ts";
 import { run } from "./live.ts";
 import { createManager } from "./mfe/manager-live.ts";
@@ -29,12 +27,6 @@ const registry = run(loadWidgetRegistry).then(
 );
 const manager = createManager({ resolver: registryResolver(registry) });
 
-/** A widget's own full page, when this tab was opened to one (see widgetPagePath). */
-const pageId = widgetPageId(location.pathname);
-if (pageId !== null) {
-  document.title = pageId;
-}
-
 const root = document.getElementById("root");
 if (root === null) {
   throw new Error("Missing #root element");
@@ -44,7 +36,7 @@ createRoot(root).render(
   <StrictMode>
     <ChakraProvider value={system}>
       <WidgetHostProvider manager={manager} registry={registry}>
-        {pageId === null ? <App /> : <WidgetPage id={pageId} />}
+        <App />
       </WidgetHostProvider>
     </ChakraProvider>
   </StrictMode>,

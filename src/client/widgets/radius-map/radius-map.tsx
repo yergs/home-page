@@ -1,12 +1,11 @@
-/** What the radius map shows in a column: a button that opens the map on a page of its own. */
+/** What the radius map shows in a column: a button that opens the map over the page. */
 import { Button, chakra, Text } from "@chakra-ui/react";
-import { LuExternalLink } from "react-icons/lu";
-import { widgetPagePath } from "../../../common/widgets.ts";
+import { LuMaximize2 } from "react-icons/lu";
 import { widgetHeading } from "../../surface.ts";
 import type { WidgetProps } from "../../widget-kit/views.tsx";
 import type { RadiusMapConfig } from "./config.ts";
 
-export function RadiusMap({ config }: WidgetProps<RadiusMapConfig>) {
+export function RadiusMap({ config, openFullScreen }: WidgetProps<RadiusMapConfig>) {
   const heading = config.heading.trim();
   return (
     <>
@@ -18,9 +17,9 @@ export function RadiusMap({ config }: WidgetProps<RadiusMapConfig>) {
         size="sm"
         variant="outline"
         color="inherit"
-        onClick={() => globalThis.open(widgetPagePath("radius-map"), "_blank")}
+        onClick={openFullScreen}
       >
-        <LuExternalLink /> Open Radius Map
+        <LuMaximize2 /> Open Radius Map
       </Button>
     </>
   );

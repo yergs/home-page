@@ -65,6 +65,16 @@ const get = async (url: string): Promise<HttpGot> => {
 // Every widget and tab showing a feed asks for it; this asks its site once in five minutes.
 const cachedGet = ttlCache<HttpGot>(5 * 60_000, 200);
 
+const censusUrl = "https://geocoding.geo.census.gov/geocoder/locations";
+
+/** A geocoder's answer as text; a failure status becomes an error, so it isn't read as no match. */
+const responseText = (response: Response): Promise<string> => {
+  if (!response.ok) {
+    return Promise.reject(new Error(`The geocoder answered ${response.status}`));
+  }
+  return response.text();
+};
+
 const io = ServerIo.of({
   readLayoutFile: Effect.tryPromise({
     try: () => Deno.readTextFile(config.layoutFile),
@@ -81,6 +91,40 @@ const io = ServerIo.of({
   }),
   readWidgetFile: (path) => attempt(() => Deno.readFile(`${config.widgetsOutDir}/${path}`)),
   httpGet: (url) => attempt(() => cachedGet(url, () => get(url))),
+  geocodeBatch: (csv) =>
+    attempt(async () => {
+      const form = new FormData();
+      form.append("addressFile", new Blob([csv], { type: "text/csv" }), "addresses.csv");
+      form.append("benchmark", "Public_AR_Current");
+      const response = await fetch(`${censusUrl}/addressbatch`, { method: "POST", body: form });
+      return responseText(response);
+    }),
+  geocodeOneLine: (query) =>
+    attempt(async () =>
+      responseText(
+        await fetch(
+          `${censusUrl}/onelineaddress?${new URLSearchParams({
+            address: query,
+            benchmark: "Public_AR_Current",
+            format: "json",
+          })}`,
+        ),
+      )
+    ),
+  geocodeNominatim: (query) =>
+    attempt(async () =>
+      responseText(
+        await fetch(
+          `https://nominatim.openstreetmap.org/search?${new URLSearchParams({
+            q: query,
+            format: "json",
+            limit: "1",
+            countrycodes: "us",
+          })}`,
+          { headers: { "user-agent": "home-page-radius-map (personal, localhost)" } },
+        ),
+      )
+    ),
 });
 
 const toHttpRequest = (request: Request): HttpRequest => ({

@@ -41,6 +41,9 @@ const noIo = ServerIo.of({
   commitLayoutTempFile: unused,
   readWidgetFile: () => unused,
   httpGet: () => unused,
+  geocodeBatch: () => unused,
+  geocodeOneLine: () => unused,
+  geocodeNominatim: () => unused,
 });
 
 const run = (req: HttpRequest, io = noIo): Promise<HttpResponse> =>
@@ -228,4 +231,80 @@ Deno.test("GET /web/assets/widgets/ 404s for missing files, and never reads othe
   ) {
     assertEquals((await run(request("GET", `/web/assets/widgets/${path}`), io)).status, 404);
   }
+});
+
+const geocodeIo = (calls: Array<string>, answers: {
+  batch?: string;
+  oneLine?: string;
+  nominatim?: string;
+}) =>
+  ServerIo.of({
+    ...noIo,
+    geocodeBatch: (csv) => Effect.sync(() => (calls.push(`batch ${csv}`), answers.batch ?? "")),
+    geocodeOneLine: (q) => Effect.sync(() => (calls.push(`census ${q}`), answers.oneLine ?? "{}")),
+    geocodeNominatim: (q) => Effect.sync(() => (calls.push(`osm ${q}`), answers.nominatim ?? "[]")),
+  });
+
+Deno.test("a widget's full page is served as the app shell", async () => {
+  const res = await run(request("GET", "/web/widget/radius-map"));
+  assertEquals([res.status, res.body], [200, page("abc", 9443)]);
+  assertEquals((await run(request("GET", "/web/widget/Bad_Id"))).status, 404);
+});
+
+Deno.test("/api/geocode/batch geocodes addresses, in order, nulling non-matches", async () => {
+  const calls: Array<string> = [];
+  const body = JSON.stringify({
+    addresses: [
+      { street: "1 Main St", city: "Town", state: "CO", zip: "80000" },
+      { street: "2 Nowhere", city: "Town", state: "CO", zip: "80000" },
+    ],
+  });
+  const res = await run(
+    request("POST", "/api/geocode/batch", { body }),
+    geocodeIo(calls, { batch: '"0","x","Match","Exact","y","-104.5,39.5"\n"1","x","No_Match"' }),
+  );
+  assertEquals(res.status, 200);
+  assertEquals(JSON.parse(String(res.body)), { results: [{ lat: 39.5, lon: -104.5 }, null] });
+  assertEquals(calls.length, 1);
+});
+
+Deno.test("/api/geocode/batch with no addresses calls no geocoder", async () => {
+  const calls: Array<string> = [];
+  const res = await run(
+    request("POST", "/api/geocode/batch", { body: '{"addresses":[]}' }),
+    geocodeIo(calls, {}),
+  );
+  assertEquals([JSON.parse(String(res.body)), calls], [{ results: [] }, []]);
+});
+
+Deno.test("/api/geocode rejects bad bodies and wrong methods", async () => {
+  assertEquals((await run(request("POST", "/api/geocode/batch", { body: "nope" }))).status, 400);
+  assertEquals((await run(request("POST", "/api/geocode/batch", { body: "{}" }))).status, 400);
+  assertEquals(
+    (await run(request("POST", "/api/geocode/place", { body: '{"query":""}' }))).status,
+    400,
+  );
+  assertEquals((await run(request("GET", "/api/geocode/place"))).status, 405);
+});
+
+Deno.test("/api/geocode/place tries the Census, then Nominatim, then gives up", async () => {
+  const census = JSON.stringify({
+    result: { addressMatches: [{ matchedAddress: "1 MAIN ST", coordinates: { x: -104, y: 39 } }] },
+  });
+  const osm = JSON.stringify([{ lat: "39.1", lon: "-104.1", display_name: "A & B" }]);
+  const ask = (answers: Parameters<typeof geocodeIo>[1], calls: Array<string> = []) =>
+    run(
+      request("POST", "/api/geocode/place", { body: '{"query":"1 Main St"}' }),
+      geocodeIo(calls, answers),
+    );
+
+  const calls: Array<string> = [];
+  const first = await ask({ oneLine: census }, calls);
+  assertEquals(JSON.parse(String(first.body)), { lat: 39, lon: -104, label: "1 MAIN ST" });
+  assertEquals(calls, ["census 1 Main St"]);
+
+  const second = await ask({ nominatim: osm });
+  assertEquals(JSON.parse(String(second.body)), { lat: 39.1, lon: -104.1, label: "A & B" });
+
+  assertEquals((await ask({})).status, 404);
 });

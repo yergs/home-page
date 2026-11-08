@@ -2,7 +2,7 @@
  * Functional core of the webserver: every routing and validation decision
  * lives here. All I/O goes through the injected {@link ServerIo} pipes.
  */
-import { Effect, Either } from "effect";
+import { Effect, Either, Schema } from "effect";
 import {
   BadRequest,
   type HttpRequest,
@@ -16,7 +16,15 @@ import {
 } from "./http.ts";
 import { decodeLayoutJson, readLayout, writeLayout } from "./layout-store.ts";
 import { assistantPortMetaName } from "../common/assistant.ts";
-import { widgetAssetsPath } from "../common/widgets.ts";
+import { widgetAssetsPath, widgetPageId } from "../common/widgets.ts";
+import {
+  BatchRequest,
+  censusBatchCsv,
+  parseCensusBatch,
+  parseCensusOneLine,
+  parseNominatim,
+  PlaceRequest,
+} from "../common/geocode.ts";
 import { importMap } from "../common/shared-modules.ts";
 import { serveWidgetFile } from "./widget-files.ts";
 import { feedsServed } from "./feeds-api.ts";
@@ -67,6 +75,35 @@ const putLayout = (request: HttpRequest) =>
     return { status: 204, headers: {}, body: null } satisfies HttpResponse;
   });
 
+const decodeBody = <A, I>(schema: Schema.Schema<A, I>, raw: string) => {
+  const parsed = Either.try(() => JSON.parse(raw) as unknown);
+  const decoded = Either.flatMap(
+    Either.mapLeft(parsed, () => "The body isn't JSON"),
+    (value) => Either.mapLeft(Schema.decodeUnknownEither(schema)(value), (e) => e.message),
+  );
+  return Either.isLeft(decoded)
+    ? Effect.fail(new BadRequest({ message: decoded.left }))
+    : Effect.succeed(decoded.right);
+};
+
+const geocodeBatch = (request: HttpRequest) =>
+  Effect.gen(function* () {
+    const { addresses } = yield* decodeBody(BatchRequest, yield* request.body);
+    const io = yield* ServerIo;
+    const answer = addresses.length === 0 ? "" : yield* io.geocodeBatch(censusBatchCsv(addresses));
+    return json({ results: parseCensusBatch(answer, addresses.length) });
+  });
+
+/** An address is tried at the Census first; cross streets and anything it doesn't know, at Nominatim. */
+const geocodePlace = (request: HttpRequest) =>
+  Effect.gen(function* () {
+    const { query } = yield* decodeBody(PlaceRequest, yield* request.body);
+    const io = yield* ServerIo;
+    const census = parseCensusOneLine(yield* io.geocodeOneLine(query));
+    const found = census ?? parseNominatim(yield* io.geocodeNominatim(query));
+    return found === null ? text(404, "No match for that place") : json(found);
+  });
+
 const route = (
   request: HttpRequest,
   site: Site,
@@ -90,6 +127,20 @@ const route = (
       },
       body: page(site.buildId, site.assistantPort),
     });
+  }
+  if (widgetPageId(pathname) !== null && isRead) {
+    // A widget's own full page: the same app shell, which shows just that widget.
+    return Effect.succeed({
+      status: 200,
+      headers: { "content-type": "text/html; charset=utf-8", "cache-control": "no-cache" },
+      body: page(site.buildId, site.assistantPort),
+    });
+  }
+  if (pathname === "/api/geocode/batch" || pathname === "/api/geocode/place") {
+    if (request.method !== "POST") {
+      return Effect.succeed(methodNotAllowed("POST"));
+    }
+    return pathname === "/api/geocode/batch" ? geocodeBatch(request) : geocodePlace(request);
   }
   if (pathname.startsWith(widgetAssetsPath) && isRead) {
     return serveWidgetFile(

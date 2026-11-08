@@ -31,6 +31,16 @@ export class ServerIo extends Context.Tag("ServerIo")<
      * Fails when it can't be reached; its answer may be cached for a few minutes.
      */
     readonly httpGet: (url: string) => Effect.Effect<HttpGot, IoError>;
+    /**
+     * The geocoders, which turn addresses into coordinates. Each sends the addresses to an
+     * outside service, and answers with its raw text. Nothing is logged or kept.
+     */
+    /** The US Census batch geocoder: CSV in, CSV out. */
+    readonly geocodeBatch: (csv: string) => Effect.Effect<string, IoError>;
+    /** The US Census geocoder for one address on one line: JSON out. */
+    readonly geocodeOneLine: (query: string) => Effect.Effect<string, IoError>;
+    /** OpenStreetMap's Nominatim, which also knows cross streets: JSON out. */
+    readonly geocodeNominatim: (query: string) => Effect.Effect<string, IoError>;
   }
 >() {}
 

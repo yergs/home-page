@@ -28,6 +28,9 @@ const web = (pages: Record<string, HttpGot>) =>
         ? Effect.fail(new IoError({ cause: "no route" }))
         : Effect.succeed(page);
     },
+    geocodeBatch: () => Effect.die("unused"),
+    geocodeOneLine: () => Effect.die("unused"),
+    geocodeNominatim: () => Effect.die("unused"),
   });
 
 const read = async (pages: Record<string, HttpGot>, feedUrl: string) => {

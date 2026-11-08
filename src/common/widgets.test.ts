@@ -1,6 +1,13 @@
 import { assertEquals, assertStringIncludes } from "@std/assert";
 import { Either, Schema } from "effect";
-import { decodeManifestModule, defineManifest, type Registry, widgetBundleUrl } from "./widgets.ts";
+import {
+  decodeManifestModule,
+  defineManifest,
+  type Registry,
+  widgetBundleUrl,
+  widgetPageId,
+  widgetPagePath,
+} from "./widgets.ts";
 
 const manifest = defineManifest({
   title: "Clock",
@@ -84,4 +91,12 @@ Deno.test("widgetBundleUrl versions the URL from the registry", () => {
     widgetBundleUrl(registry, "gone"),
     Either.left(`There's no widget type called "gone"`),
   );
+});
+
+Deno.test("a widget's full-page path round-trips, and other paths aren't one", () => {
+  assertEquals(widgetPageId(widgetPagePath("radius-map")), "radius-map");
+  assertEquals(widgetPageId("/web/widget/radius-map/"), "radius-map");
+  assertEquals(widgetPageId("/web/widget/Bad_Id"), null);
+  assertEquals(widgetPageId("/web/widget/a/b"), null);
+  assertEquals(widgetPageId("/web/app"), null);
 });

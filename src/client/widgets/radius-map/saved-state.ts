@@ -20,6 +20,8 @@ export const SavedState = Schema.Struct({
   starts: Schema.Array(Schema.Struct({
     id: Schema.Number,
     name: Schema.String,
+    // Older saves have no visibility: those teachers are shown.
+    visible: Schema.optionalWith(Schema.Boolean, { default: () => true }),
     text: Schema.String,
     milesText: Schema.String,
   })),
@@ -30,7 +32,7 @@ export type SavedState = typeof SavedState.Type;
 export const emptyState: SavedState = {
   csv: null,
   mapping: null,
-  starts: [{ id: 0, name: "", text: "", milesText: "10" }],
+  starts: [{ id: 0, name: "", visible: true, text: "", milesText: "10" }],
 };
 
 /** The saved state in its stored text. */

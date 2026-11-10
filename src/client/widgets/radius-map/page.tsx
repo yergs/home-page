@@ -6,7 +6,7 @@
  */
 import { Box, Button, chakra, HStack, IconButton, Input, Text } from "@chakra-ui/react";
 import { useEffect, useMemo, useState } from "react";
-import { LuDownload, LuPlus, LuSearch, LuTrash2, LuUpload } from "react-icons/lu";
+import { LuDownload, LuEye, LuEyeOff, LuPlus, LuSearch, LuTrash2, LuUpload } from "react-icons/lu";
 import { parseCsv, toCsv } from "../../../common/csv.ts";
 import {
   addressKey,
@@ -55,12 +55,15 @@ type Csv = {
 type Start = {
   readonly id: number;
   readonly name: string;
+  /** Hidden teachers are off the map and left out of who is in range, until shown again. */
+  readonly visible: boolean;
   readonly text: string;
   readonly milesText: string;
 };
 
 type Search = {
-  readonly teachers: ReadonlyArray<Teacher>;
+  /** Every teacher found, by the id of the row they came from, shown or hidden. */
+  readonly teachers: ReadonlyArray<{ readonly id: number; readonly teacher: Teacher }>;
   readonly unmatched: number;
 };
 
@@ -121,7 +124,7 @@ export function RadiusMapPage({ widgetId }: FullScreenProps<RadiusMapConfig>) {
     if (csv === null || mapping === null) return;
     setBusy(true);
     setSelected(null);
-    const teachers: Array<Teacher> = [];
+    const teachers: Array<{ id: number; teacher: Teacher }> = [];
     for (const start of filled) {
       setStatus({ error: false, text: `Finding ${start.text.trim()}…` });
       const found = await findPlace(start.text.trim());
@@ -131,9 +134,12 @@ export function RadiusMapPage({ widgetId }: FullScreenProps<RadiusMapConfig>) {
         return;
       }
       teachers.push({
-        label: start.name.trim() !== "" ? start.name.trim() : found.value.label,
-        at: found.value,
-        miles: startMiles(start),
+        id: start.id,
+        teacher: {
+          label: start.name.trim() !== "" ? start.name.trim() : found.value.label,
+          at: found.value,
+          miles: startMiles(start),
+        },
       });
     }
     let nowKnown = known;
@@ -164,6 +170,15 @@ export function RadiusMapPage({ widgetId }: FullScreenProps<RadiusMapConfig>) {
     setStatus(null);
   };
 
+  // Teachers whose eye is open, which can change without searching again.
+  const active: ReadonlyArray<Teacher> = useMemo(
+    () =>
+      (search?.teachers ?? [])
+        .filter((t) => starts.find((s) => s.id === t.id)?.visible !== false)
+        .map((t) => t.teacher),
+    [search, starts],
+  );
+
   const results: ReadonlyArray<Assessed<{ id: number; row: ReadonlyArray<string> }>> = useMemo(
     () => {
       if (csv === null || mapping === null || search === null) return [];
@@ -171,14 +186,14 @@ export function RadiusMapPage({ widgetId }: FullScreenProps<RadiusMapConfig>) {
         const at = known[addressKey(rowAddress(row, mapping))];
         return at == null ? [] : [{ item: { id, row }, at }];
       });
-      return assess(leads, search.teachers);
+      return assess(leads, active);
     },
-    [csv, mapping, search, known],
+    [csv, mapping, search, known, active],
   );
   const inRange = results.filter((r) => r.covered);
   const outOfRange = results.filter((r) => !r.covered);
   const shown = tab === "in" ? inRange : outOfRange;
-  const anyTeachers = search !== null && search.teachers.length > 0;
+  const anyTeachers = active.length > 0;
 
   const dots: ReadonlyArray<Dot> = useMemo(
     () =>
@@ -198,8 +213,8 @@ export function RadiusMapPage({ widgetId }: FullScreenProps<RadiusMapConfig>) {
   );
 
   const circles: ReadonlyArray<Circle> = useMemo(
-    () => (search?.teachers ?? []).map((t) => ({ at: t.at, miles: t.miles, label: t.label })),
-    [search],
+    () => active.map((t) => ({ at: t.at, miles: t.miles, label: t.label })),
+    [active],
   );
 
   const download = () => {
@@ -341,6 +356,18 @@ export function RadiusMapPage({ widgetId }: FullScreenProps<RadiusMapConfig>) {
                   />
                   <Text fontSize="xs">mi</Text>
                   <IconButton
+                    aria-label={s.visible ? "Hide this teacher" : "Show this teacher"}
+                    title={s.visible
+                      ? "Hide: take off the map and out of the range check"
+                      : "Show on the map and in the range check"}
+                    size="xs"
+                    variant="ghost"
+                    onClick={() =>
+                      setStarts(starts.map((o, j) => j === i ? { ...o, visible: !o.visible } : o))}
+                  >
+                    {s.visible ? <LuEye /> : <LuEyeOff />}
+                  </IconButton>
+                  <IconButton
                     aria-label="Remove"
                     size="xs"
                     variant="ghost"
@@ -362,6 +389,7 @@ export function RadiusMapPage({ widgetId }: FullScreenProps<RadiusMapConfig>) {
                 {
                   id: Math.max(-1, ...starts.map((s) => s.id)) + 1,
                   name: "",
+                  visible: true,
                   text: "",
                   milesText: "10",
                 },
@@ -441,7 +469,7 @@ export function RadiusMapPage({ widgetId }: FullScreenProps<RadiusMapConfig>) {
                       <chakra.span fontWeight="normal" color="fg.muted">
                         {` · ${r.nearest.miles.toFixed(1)} mi · ~${
                           formatDrive(driveMinutes(r.nearest.miles))
-                        }${search.teachers.length > 1 ? ` · ${r.nearest.teacher.label}` : ""}`}
+                        }${active.length > 1 ? ` · ${r.nearest.teacher.label}` : ""}`}
                       </chakra.span>
                     )}
                   </Text>

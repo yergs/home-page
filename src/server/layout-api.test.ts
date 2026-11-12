@@ -26,6 +26,9 @@ const store = (stored: string | null, failWrites = false) => {
     }),
     readWidgetFile: () => Effect.die("unused"),
     httpGet: () => Effect.die("unused"),
+    geocodeBatch: () => Effect.die("unused"),
+    geocodeOneLine: () => Effect.die("unused"),
+    geocodeNominatim: () => Effect.die("unused"),
   });
   return { disk, io };
 };

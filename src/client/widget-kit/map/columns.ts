@@ -67,12 +67,3 @@ export const rowName = (row: ReadonlyArray<string>, mapping: Mapping): string =>
   const a = rowAddress(row, mapping);
   return [a.street, a.city].filter((p) => p !== "").join(", ");
 };
-
-/** Whether there's enough to look an address up: a street, and a city or zip. */
-export const isLookable = (a: AddressQuery): boolean =>
-  a.street !== "" && (a.city !== "" || a.zip !== "");
-
-/** The same address spelled any way of the same letters, so it's looked up once. */
-export const addressKey = (a: AddressQuery): string =>
-  [a.street, a.city, a.state, a.zip].map((p) => p.toLowerCase().replaceAll(/\s+/g, " ").trim())
-    .join("|");

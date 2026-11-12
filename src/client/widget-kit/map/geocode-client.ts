@@ -12,8 +12,8 @@ import {
   PlaceResponse,
 } from "../../../common/geocode.ts";
 import { type Known, type Lookup } from "./lookups.ts";
-import { decodeState, encodeState, type SavedState } from "./saved-state.ts";
 
+/** Shared by every map widget, so an address is looked up once for all of them. */
 const cacheKey = "radius-map:known-addresses";
 
 /** What this browser already knows. Only on this computer; "Forget" erases it. */
@@ -45,6 +45,9 @@ export type Result<A> = { readonly ok: true; readonly value: A } | {
   readonly errorMessage: string;
 };
 
+/** What {@link findPlace} says when nothing matched, as opposed to a failure. */
+export const noMatchMessage = "No match for that place.";
+
 const post = async (path: string, body: unknown): Promise<Result<unknown>> => {
   const sent = await Effect.runPromise(Effect.either(Effect.tryPromise({
     try: () =>
@@ -60,7 +63,7 @@ const post = async (path: string, body: unknown): Promise<Result<unknown>> => {
   }
   const response = sent.right;
   if (response.status === 404) {
-    return { ok: false, errorMessage: "No match for that place." };
+    return { ok: false, errorMessage: noMatchMessage };
   }
   if (!response.ok) {
     return { ok: false, errorMessage: `The server answered ${response.status}.` };
@@ -99,30 +102,3 @@ export const findAddresses = async (
 };
 
 export const batchSize = maxBatch;
-
-/** What the page says when the browser has no room to keep the CSV. */
-export const savedProblem = "This file is too big to keep in the browser between visits.";
-
-/** Where one radius map widget keeps its state, so each widget has its own. */
-const stateKey = (widgetId: string) => `radius-map:page-state:${widgetId}`;
-
-/** Where the state was kept when there was one map for every widget, before full-screen views. */
-const sharedStateKey = "radius-map:page-state";
-
-/**
- * The CSV, column choices and teachers this widget saved in this browser. A widget
- * with none yet starts from what was saved before each widget had its own.
- */
-export const loadState = (widgetId: string): SavedState =>
-  decodeState(localStorage.getItem(stateKey(widgetId)) ?? localStorage.getItem(sharedStateKey));
-
-/** Saves them in this browser only. Fails with a message if the browser has no room (a huge CSV). */
-export const saveState = (widgetId: string, state: SavedState): string | null => {
-  const saved = Either.try(() => localStorage.setItem(stateKey(widgetId), encodeState(state)));
-  return Either.isLeft(saved) ? savedProblem : null;
-};
-
-export const forgetState = (widgetId: string): void => {
-  localStorage.removeItem(stateKey(widgetId));
-  localStorage.removeItem(sharedStateKey);
-};

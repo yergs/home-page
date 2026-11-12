@@ -121,3 +121,22 @@ export const toScreen = (
   const c = toWorld(view.center, zoom);
   return { x: p.x - c.x + width / 2, y: p.y - c.y + height / 2 };
 };
+
+/** The view zoomed by `steps` levels (clamped), keeping the place at (x, y) in the view where it is. */
+export const zoomAt = (
+  view: View,
+  x: number,
+  y: number,
+  width: number,
+  height: number,
+  steps: number,
+): View => {
+  const zoom = Math.max(minZoom, Math.min(maxZoom, view.zoom + steps));
+  const here = toWorld(view.center, view.zoom);
+  const place = fromWorld({ x: here.x + x - width / 2, y: here.y + y - height / 2 }, view.zoom);
+  const there = toWorld(place, zoom);
+  return {
+    center: fromWorld({ x: there.x - (x - width / 2), y: there.y - (y - height / 2) }, zoom),
+    zoom,
+  };
+};

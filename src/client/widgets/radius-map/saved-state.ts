@@ -1,6 +1,6 @@
 /** What the radius map page keeps in this browser between visits: the CSV, its mapping and the teachers. */
 import { Either, Schema } from "effect";
-import { fields } from "./columns.ts";
+import { fields } from "../../widget-kit/map/columns.ts";
 
 const Index = Schema.NullOr(Schema.Number);
 

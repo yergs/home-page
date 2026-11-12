@@ -1,5 +1,5 @@
 import { assertEquals } from "@std/assert";
-import { addressKey, detectMapping, isLookable, rowAddress, rowName } from "./columns.ts";
+import { detectMapping, rowAddress, rowName } from "./columns.ts";
 
 Deno.test("detectMapping finds the usual header names, and each column once", () => {
   assertEquals(detectMapping(["Family Name", "Street Address", "City", "State", "Zip Code"]), {
@@ -37,19 +37,4 @@ Deno.test("rowAddress and rowName read a row through the mapping", () => {
   assertEquals(rowAddress(row, mapping), { street: "1 Main St", city: "Town", state: "", zip: "" });
   assertEquals(rowName(row, mapping), "Ann");
   assertEquals(rowName(["", "1 Main St", "Town"], mapping), "1 Main St, Town");
-});
-
-Deno.test("isLookable needs a street and a city or zip", () => {
-  const a = { street: "1 Main", city: "", state: "", zip: "" };
-  assertEquals(isLookable(a), false);
-  assertEquals(isLookable({ ...a, zip: "80000" }), true);
-  assertEquals(isLookable({ ...a, city: "Town" }), true);
-  assertEquals(isLookable({ ...a, street: "", city: "Town" }), false);
-});
-
-Deno.test("addressKey ignores case and spacing", () => {
-  assertEquals(
-    addressKey({ street: " 1  MAIN st", city: "Town", state: "CO", zip: "80000" }),
-    addressKey({ street: "1 main ST", city: "town", state: "co", zip: "80000" }),
-  );
 });

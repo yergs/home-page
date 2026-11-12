@@ -9,32 +9,28 @@ import { useEffect, useMemo, useState } from "react";
 import { LuDownload, LuEye, LuEyeOff, LuPlus, LuSearch, LuTrash2, LuUpload } from "react-icons/lu";
 import { parseCsv, toCsv } from "../../../common/csv.ts";
 import {
-  addressKey,
   detectMapping,
   type Field,
   fields,
-  isLookable,
   type Mapping,
   rowAddress,
   rowName,
-} from "./columns.ts";
+} from "../../widget-kit/map/columns.ts";
 import { assess, type Assessed, type Teacher } from "./coverage.ts";
-import { driveMinutes, formatDrive } from "./distance.ts";
+import { driveMinutes, formatDrive } from "../../widget-kit/map/distance.ts";
 import {
   batchSize,
   findAddresses,
   findPlace,
   forgetKnown,
-  forgetState,
   loadKnown,
-  loadState,
-  savedProblem,
   saveKnown,
-  saveState,
-} from "./geocode-client.ts";
+} from "../../widget-kit/map/geocode-client.ts";
+import { forgetState, loadState, savedProblem, saveState } from "./state-storage.ts";
+import { addressKey, isLookable } from "../../widget-kit/map/address.ts";
 import { emptyState } from "./saved-state.ts";
-import { chunks, type Known, lookupsNeeded } from "./lookups.ts";
-import { type Circle, type Dot, MapView } from "./map-view.tsx";
+import { chunks, type Known, lookupsNeeded } from "../../widget-kit/map/lookups.ts";
+import { type Circle, type Dot, MapView } from "../../widget-kit/map/map-view.tsx";
 import type { FullScreenProps } from "../../widget-kit/views.tsx";
 import type { RadiusMapConfig } from "./config.ts";
 
@@ -200,7 +196,8 @@ export function RadiusMapPage({ widgetId }: FullScreenProps<RadiusMapConfig>) {
       mapping === null ? [] : results.map((r) => ({
         id: r.item.id,
         at: r.at,
-        covered: r.covered,
+        colors: [r.covered ? "#dc2626" : "#4b5563"],
+        shape: "circle",
         label: `${rowName(r.item.row, mapping)}${
           r.nearest === null
             ? ""
@@ -213,7 +210,7 @@ export function RadiusMapPage({ widgetId }: FullScreenProps<RadiusMapConfig>) {
   );
 
   const circles: ReadonlyArray<Circle> = useMemo(
-    () => active.map((t) => ({ at: t.at, miles: t.miles, label: t.label })),
+    () => active.map((t) => ({ at: t.at, miles: t.miles, label: t.label, shape: "circle" })),
     [active],
   );
 
@@ -509,6 +506,7 @@ export function RadiusMapPage({ widgetId }: FullScreenProps<RadiusMapConfig>) {
           dots={dots}
           selected={selected}
           onSelect={setSelected}
+          fitKey={search}
         />
       </Box>
     </Box>

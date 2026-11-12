@@ -9,6 +9,7 @@ import {
   toScreen,
   toWorld,
   visibleTiles,
+  zoomAt,
 } from "./projection.ts";
 
 const denver = { lat: 39.7392, lon: -104.9903 };
@@ -65,4 +66,20 @@ Deno.test("visibleTiles covers the view, wrapping around the world and stopping 
   // Past the top of the map there are no tiles.
   const polar = visibleTiles({ center: { lat: 85, lon: 0 }, zoom: 2 }, 400, 800);
   assertEquals(polar.every((t) => t.y >= 0 && t.y < 4), true);
+});
+
+Deno.test("zoomAt keeps the place under the pointer where it was, and stops at the limits", () => {
+  const view = { center: denver, zoom: 10 };
+  // The pointer is 100 pixels right of and 50 above the middle of an 800 by 600 view.
+  const at = fromWorld(
+    { x: toWorld(denver, 10).x + 100, y: toWorld(denver, 10).y - 50 },
+    10,
+  );
+  const zoomed = zoomAt(view, 500, 250, 800, 600, 1);
+  assertEquals(zoomed.zoom, 11);
+  const after = toScreen(at, zoomed, 800, 600);
+  assertAlmostEquals(after.x, 500, 1e-6);
+  assertAlmostEquals(after.y, 250, 1e-6);
+  assertEquals(zoomAt({ center: denver, zoom: 18 }, 400, 300, 800, 600, 1).zoom, 18);
+  assertEquals(zoomAt({ center: denver, zoom: minZoom }, 400, 300, 800, 600, -1).zoom, minZoom);
 });

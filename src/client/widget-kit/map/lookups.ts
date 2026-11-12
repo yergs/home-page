@@ -1,6 +1,6 @@
 /** Deciding which addresses still need looking up, given the coordinates already known. */
 import type { AddressQuery, Coordinates } from "../../../common/geocode.ts";
-import { addressKey, isLookable } from "./columns.ts";
+import { addressKey, isLookable } from "./address.ts";
 
 /** Coordinates by address key; null for an address the geocoder couldn't find. */
 export type Known = Readonly<Record<string, Coordinates | null>>;

@@ -1,6 +1,6 @@
 /** Which leads are within reach of which teachers: the nearest teacher, and whether they cover it. */
 import type { Coordinates } from "../../../common/geocode.ts";
-import { milesBetween } from "./distance.ts";
+import { milesBetween } from "../../widget-kit/map/distance.ts";
 
 export type Teacher = {
   readonly label: string;

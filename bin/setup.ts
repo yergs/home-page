@@ -92,7 +92,9 @@ const settings: SetupSettings = {
 
 /**
  * Asks the Agent SDK's own Claude Code (not `claude` on PATH, which may be a launcher that
- * adds to the environment) whether it's logged in, with only what launchd gives the services.
+ * adds to the environment) whether it's logged in, with only what launchd gives the services:
+ * the plist's variables, plus the USER that launchd sets for every per-user agent. Claude Code
+ * needs USER to find a claude.ai login in the keychain.
  */
 const servicesLoggedIn: Effect.Effect<boolean | null> = Effect.gen(function* () {
   const arch = Deno.build.arch === "aarch64" ? "arm64" : "x64";
@@ -103,7 +105,12 @@ const servicesLoggedIn: Effect.Effect<boolean | null> = Effect.gen(function* () 
     new Deno.Command(`${sdk}/../claude-agent-sdk-${Deno.build.os}-${arch}/claude`, {
       args: ["auth", "status"],
       clearEnv: true,
-      env: { HOME: service.home, PATH: service.path, NO_COLOR: "1" },
+      env: {
+        HOME: service.home,
+        PATH: service.path,
+        NO_COLOR: "1",
+        USER: Deno.env.get("USER") ?? "",
+      },
       stdin: "null",
       stderr: "null",
     }).output()
